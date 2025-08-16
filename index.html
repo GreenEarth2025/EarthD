@@ -1,120 +1,388 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Tick Tock 6</title>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Country insights explorer</title>
 <style>
-  body { font-family: Arial, sans-serif; text-align: center; background: #f0f0f0; }
-  h1 { margin-top: 20px; color: #333; }
-  .board {
+  :root{
+    --panel-bg: rgba(255,255,255,0.9);
+    --accent: #0066cc;
+    --text: #1f2937;
+    --muted: #6b7280;
+    --good: #0a7d32;
+    --warn: #b45309;
+  }
+  html, body { height: 100%; }
+  body{
+    margin: 0;
+    font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif;
+    color: var(--text);
+    background-image: url('https://upload.wikimedia.org/wikipedia/commons/8/80/World_map_-_low_resolution.svg');
+    background-size: cover;
+    background-position: center;
+    background-attachment: fixed;
+  }
+  .app{
+    max-width: 1000px;
+    margin: 0 auto;
+    padding: 24px;
+  }
+  .panel{
+    background: var(--panel-bg);
+    border-radius: 12px;
+    box-shadow: 0 8px 24px rgba(0,0,0,0.12);
+    padding: 20px;
+    backdrop-filter: blur(3px);
+  }
+  h1{
+    margin: 6px 0 12px;
+    font-size: 28px;
+  }
+  .sub{
+    color: var(--muted);
+    margin: 0 0 16px;
+    font-size: 14px;
+  }
+  .row{
     display: grid;
-    grid-template-columns: repeat(3, 100px);
-    grid-template-rows: repeat(2, 100px);
-    gap: 5px;
-    justify-content: center;
-    margin: 20px auto;
+    grid-template-columns: 1fr;
+    gap: 14px;
   }
-  .cell {
-    background: #fff;
-    border: 2px solid #333;
-    font-size: 2em;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    cursor: pointer;
-    user-select: none;
-    transition: background 0.2s;
+  @media (min-width: 780px){
+    .row{ grid-template-columns: 1fr 1fr; }
   }
-  .cell:hover:not(.taken) { background: #e0ffe0; }
-  .cell.taken { cursor: default; color: #555; }
-  #status { font-weight: bold; margin-top: 15px; }
-  button { margin-top: 15px; padding: 8px 16px; font-size: 1em; cursor: pointer; }
+  label{ font-weight: 600; }
+  select{
+    width: 100%;
+    padding: 10px 12px;
+    border-radius: 8px;
+    border: 1px solid #cbd5e1;
+    font-size: 16px;
+    background: white;
+  }
+  .cards{
+    display: grid;
+    grid-template-columns: repeat(1, minmax(0, 1fr));
+    gap: 12px;
+    margin-top: 14px;
+  }
+  @media (min-width: 780px){
+    .cards{ grid-template-columns: repeat(3, minmax(0, 1fr)); }
+  }
+  .card{
+    background: white;
+    border: 1px solid #e5e7eb;
+    border-radius: 10px;
+    padding: 12px;
+    min-height: 88px;
+  }
+  .card h3{
+    margin: 0 0 6px;
+    font-size: 14px;
+    color: var(--muted);
+    font-weight: 700;
+    letter-spacing: 0.02em;
+    text-transform: uppercase;
+  }
+  .value{
+    font-size: 20px;
+    font-weight: 700;
+  }
+  .muted{ color: var(--muted); }
+  .note{
+    margin-top: 12px;
+    font-size: 13px;
+    color: var(--muted);
+  }
+  .footer{
+    margin-top: 16px;
+    font-size: 12px;
+    color: var(--muted);
+  }
+  .tag{
+    display: inline-block;
+    background: #eef2ff;
+    color: #3730a3;
+    border: 1px solid #c7d2fe;
+    border-radius: 999px;
+    padding: 2px 8px;
+    font-size: 12px;
+    margin-left: 8px;
+    vertical-align: middle;
+  }
+  .loading, .error{
+    margin-top: 8px;
+    font-size: 14px;
+  }
+  .loading{ color: var(--accent); }
+  .error{ color: #b91c1c; }
+  .grid-2{
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 12px;
+  }
+  @media (min-width: 780px){
+    .grid-2{ grid-template-columns: 1fr 1fr; }
+  }
 </style>
 </head>
 <body>
+  <div class="app">
+    <div class="panel">
+      <h1>Country insights explorer <span class="tag">Demo</span></h1>
+      <p class="sub">Select a country to see capital, land area, population, and demo economics. Capitals/area/population load live; other figures are sample placeholders you can edit in the code dataset.</p>
 
-<h1>Tick Tock 6</h1>
-<div class="board" id="board"></div>
-<div id="status">Your turn!</div>
-<button onclick="resetGame()">Restart Game</button>
+      <div class="row">
+        <div>
+          <label for="country">Country</label>
+          <select id="country" aria-label="Select a country"></select>
+          <div id="status" class="loading">Loading countries…</div>
+        </div>
+        <div class="grid-2">
+          <div class="card">
+            <h3>Capital</h3>
+            <div id="capital" class="value">—</div>
+          </div>
+          <div class="card">
+            <h3>Population</h3>
+            <div id="population" class="value">—</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="cards">
+        <div class="card">
+          <h3>Land area</h3>
+          <div id="area" class="value">—</div>
+        </div>
+        <div class="card">
+          <h3>Test analyst salary (annual)</h3>
+          <div id="salary" class="value">—</div>
+          <div id="salaryMonthly" class="muted">—</div>
+        </div>
+        <div class="card">
+          <h3>Monthly living cost (family of 4)</h3>
+          <div id="livingCost" class="value">—</div>
+        </div>
+        <div class="card">
+          <h3>Happiness index</h3>
+          <div id="happiness" class="value">—</div>
+          <div class="muted">0–10 scale (demo)</div>
+        </div>
+        <div class="card">
+          <h3>Retirement savings estimate</h3>
+          <div id="retirement" class="value">—</div>
+          <div id="retirementNote" class="muted">Assumes savings rate and average tenure (demo)</div>
+        </div>
+        <div class="card">
+          <h3>Country code</h3>
+          <div id="code" class="value">—</div>
+          <div id="region" class="muted">—</div>
+        </div>
+      </div>
+
+      <div class="note">
+        Notes:
+        <ul>
+          <li>Capitals, land area, and population are loaded from a public countries service at runtime.</li>
+          <li>Salary, living cost, happiness, and retirement are demo placeholders stored in the dataset inside this file. Edit or expand as you like.</li>
+        </ul>
+      </div>
+
+      <div class="footer">Background: public‑domain world map (Wikimedia Commons). This is a static demo designed to run on GitHub Pages with no build tools.</div>
+    </div>
+  </div>
 
 <script>
-const boardEl = document.getElementById('board');
-const statusEl = document.getElementById('status');
-let board = ["", "", "", "", "", ""];
-let currentPlayer = "X"; // Human starts
-let gameActive = true;
+(function(){
+  // Demo economics dataset (edit these or add more by ISO code)
+  // Values are illustrative placeholders for demo purposes only.
+  const demo = {
+    // Australia
+    "AU": {
+      currency: "AUD",
+      testAnalystSalaryAnnual: 90000,
+      monthlyCostFamily4: 6500,
+      happinessIndex: 7.1
+    },
+    // United States
+    "US": {
+      currency: "USD",
+      testAnalystSalaryAnnual: 80000,
+      monthlyCostFamily4: 5000,
+      happinessIndex: 6.9
+    },
+    // India
+    "IN": {
+      currency: "INR",
+      testAnalystSalaryAnnual: 900000,
+      monthlyCostFamily4: 150000,
+      happinessIndex: 4.0
+    },
+    // United Kingdom
+    "GB": {
+      currency: "GBP",
+      testAnalystSalaryAnnual: 45000,
+      monthlyCostFamily4: 3300,
+      happinessIndex: 7.1
+    }
+  };
 
-function renderBoard() {
-  boardEl.innerHTML = "";
-  board.forEach((cell, idx) => {
-    const cellEl = document.createElement('div');
-    cellEl.classList.add('cell');
-    if (cell) cellEl.classList.add('taken');
-    cellEl.textContent = cell;
-    cellEl.addEventListener('click', () => handleCellClick(idx));
-    boardEl.appendChild(cellEl);
-  });
-}
+  // Retirement estimate assumptions (demo)
+  const RETIREMENT = {
+    averageJobsHeld: 12,
+    averageTenureYears: 3,
+    savingRate: 0.10 // 10% of gross salary
+  };
 
-function handleCellClick(index) {
-  if (!gameActive || board[index] || currentPlayer !== "X") return;
-  board[index] = "X";
-  renderBoard();
-  checkResult();
-  if (gameActive) {
-    currentPlayer = "O";
-    statusEl.textContent = "Computer's turn...";
-    setTimeout(computerMove, 500);
+  const els = {
+    select: document.getElementById('country'),
+    status: document.getElementById('status'),
+    capital: document.getElementById('capital'),
+    population: document.getElementById('population'),
+    area: document.getElementById('area'),
+    salary: document.getElementById('salary'),
+    salaryMonthly: document.getElementById('salaryMonthly'),
+    livingCost: document.getElementById('livingCost'),
+    happiness: document.getElementById('happiness'),
+    retirement: document.getElementById('retirement'),
+    retirementNote: document.getElementById('retirementNote'),
+    code: document.getElementById('code'),
+    region: document.getElementById('region')
+  };
+
+  // Utility formatters
+  const fmtNumber = (n) => typeof n === 'number' ? n.toLocaleString() : '—';
+  const fmtCurrency = (amount, code) => {
+    if (typeof amount !== 'number') return '—';
+    // Try Intl currency, fall back to "CODE amount"
+    try {
+      return new Intl.NumberFormat(undefined, { style: 'currency', currency: code || 'USD', maximumFractionDigits: 0 }).format(amount);
+    } catch {
+      return (code ? code + ' ' : '') + amount.toLocaleString();
+    }
+  };
+
+  // Fetch with timeout helper
+  function fetchWithTimeout(url, options={}, timeoutMs=7000){
+    return Promise.race([
+      fetch(url, options),
+      new Promise((_, rej) => setTimeout(() => rej(new Error('timeout')), timeoutMs))
+    ]);
   }
-}
 
-function computerMove() {
-  let empty = board.map((v, i) => v === "" ? i : null).filter(v => v !== null);
-  if (!empty.length) return;
-  const choice = empty[Math.floor(Math.random() * empty.length)];
-  board[choice] = "O";
-  renderBoard();
-  checkResult();
-  if (gameActive) {
-    currentPlayer = "X";
-    statusEl.textContent = "Your turn!";
-  }
-}
+  // Load countries
+  let countries = [];
+  let byCode = new Map();
 
-function checkResult() {
-  const winPatterns = [
-    [0,1,2], [3,4,5], // rows
-    [0,3], [1,4], [2,5] // columns
+  const FALLBACK = [
+    // Minimal fallback if network blocks the API
+    { name: { common: 'Australia' }, cca2: 'AU', capital: ['Canberra'], area: 7692024, population: 26000000, region: 'Oceania' },
+    { name: { common: 'India' }, cca2: 'IN', capital: ['New Delhi'], area: 3287263, population: 1400000000, region: 'Asia' },
+    { name: { common: 'United Kingdom' }, cca2: 'GB', capital: ['London'], area: 242495, population: 67000000, region: 'Europe' },
+    { name: { common: 'United States' }, cca2: 'US', capital: ['Washington, D.C.'], area: 9372610, population: 331000000, region: 'Americas' }
   ];
-  for (let pattern of winPatterns) {
-    const values = pattern.map(i => board[i]);
-    if (values.every(v => v === "X")) {
-      statusEl.textContent = "You win!";
-      gameActive = false; return;
+
+  async function loadCountries(){
+    els.status.textContent = 'Loading countries…';
+    try{
+      const res = await fetchWithTimeout('https://restcountries.com/v3.1/all?fields=name,cca2,capital,area,population,region,flag');
+      if(!res.ok) throw new Error('Network response not ok');
+      const data = await res.json();
+      countries = data
+        .filter(c => c.cca2 && c.name && c.name.common)
+        .sort((a,b) => a.name.common.localeCompare(b.name.common));
+      els.status.textContent = `Loaded ${countries.length} countries`;
+    }catch(e){
+      countries = FALLBACK;
+      els.status.innerHTML = '<span class="error">Could not load full country list. Using a small offline fallback.</span>';
     }
-    if (values.every(v => v === "O")) {
-      statusEl.textContent = "Computer wins!";
-      gameActive = false; return;
+    byCode = new Map(countries.map(c => [c.cca2, c]));
+    renderSelect();
+    // Default to Australia if present (friendly for you), else first item
+    const defaultCode = byCode.has('AU') ? 'AU' : countries[0]?.cca2;
+    if (defaultCode) {
+      els.select.value = defaultCode;
+      updateView(defaultCode);
     }
   }
-  if (board.every(cell => cell)) {
-    statusEl.textContent = "It's a draw!";
-    gameActive = false;
+
+  function renderSelect(){
+    els.select.innerHTML = '';
+    for(const c of countries){
+      const opt = document.createElement('option');
+      opt.value = c.cca2;
+      const flag = (c.flag ? c.flag + ' ' : '');
+      opt.textContent = `${flag}${c.name.common}`;
+      els.select.appendChild(opt);
+    }
+    els.select.addEventListener('change', (e) => updateView(e.target.value));
   }
-}
 
-function resetGame() {
-  board = ["", "", "", "", "", ""];
-  gameActive = true;
-  currentPlayer = "X";
-  statusEl.textContent = "Your turn!";
-  renderBoard();
-}
+  function updateView(code){
+    const c = byCode.get(code);
+    if(!c){
+      setValue(els.capital, '—');
+      setValue(els.population, '—');
+      setValue(els.area, '—');
+      setValue(els.code, code || '—');
+      setValue(els.region, '—');
+      fillEconomics(code, null);
+      return;
+    }
+    setValue(els.capital, Array.isArray(c.capital) && c.capital.length ? c.capital.join(', ') : '—');
+    setValue(els.population, fmtNumber(c.population));
+    setValue(els.area, c.area ? `${fmtNumber(c.area)} km²` : '—');
+    setValue(els.code, c.cca2);
+    setValue(els.region, c.region || '—');
+    fillEconomics(code, demo[code] || null);
+  }
 
-renderBoard();
+  function fillEconomics(code, econ){
+    if(!econ){
+      setValue(els.salary, 'Data not provided');
+      setValue(els.salaryMonthly, '—');
+      setValue(els.livingCost, 'Data not provided');
+      setValue(els.happiness, 'Data not provided');
+      setValue(els.retirement, 'Not enough data');
+      els.retirementNote.textContent = 'Provide salary to compute a simple savings estimate.';
+      return;
+    }
+    // Salary annual + monthly
+    setValue(els.salary, fmtCurrency(econ.testAnalystSalaryAnnual, econ.currency));
+    setValue(els.salaryMonthly, `≈ ${fmtCurrency((econ.testAnalystSalaryAnnual/12), econ.currency)} per month`);
+
+    // Living cost
+    setValue(els.livingCost, fmtCurrency(econ.monthlyCostFamily4, econ.currency));
+
+    // Happiness index
+    setValue(els.happiness, typeof econ.happinessIndex === 'number' ? econ.happinessIndex.toFixed(1) : 'Data not provided');
+
+    // Retirement savings estimate (very simple illustrative model)
+    if (typeof econ.testAnalystSalaryAnnual === 'number') {
+      const est = econ.testAnalystSalaryAnnual
+        * RETIREMENT.savingRate
+        * RETIREMENT.averageTenureYears
+        * RETIREMENT.averageJobsHeld;
+      setValue(els.retirement, fmtCurrency(est, econ.currency));
+      els.retirementNote.textContent =
+        `Assumes ${Math.round(RETIREMENT.savingRate*100)}% saved, `
+        + `${RETIREMENT.averageTenureYears} years/job, `
+        + `${RETIREMENT.averageJobsHeld} jobs (illustrative).`;
+    } else {
+      setValue(els.retirement, 'Not enough data');
+      els.retirementNote.textContent = 'Provide salary to compute a simple savings estimate.';
+    }
+  }
+
+  function setValue(el, val){ el.textContent = val; }
+
+  // Kick off
+  loadCountries();
+})();
 </script>
-
 </body>
 </html>
+
+
